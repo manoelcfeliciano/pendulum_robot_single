@@ -42,21 +42,21 @@ int speed;
 // Motor controller pins
 const int AIN1 = 5;  // (pwm) pin 3 connected to pin AIN1 
 const int AIN2 = 6;  // (pwm) pin 9 connected to pin AIN2 
-const int BIN1 = 10; // (pwm) pin 10 connected to pin BIN1  
-const int BIN2 = 11;  // (pwm) pin 11 connected to pin BIN2 
+const int BIN1 = 11; // (pwm) pin 10 connected to pin BIN1  
+const int BIN2 = 10;  // (pwm) pin 11 connected to pin BIN2 
 
 // PID
 const float Kp = 4; 
-const float Ki = 1;
+const float Ki = 4;
 const float Kd = 1;
 float pTerm, iTerm, dTerm, integrated_error, last_error, error;
 const float K = 1.9*1.12;
 #define   GUARD_GAIN   10.0
 
 //angles and offset
-const float upRight = 0.0;
-const float upRightOffset = 2;
-const float balanceAngle = 25;
+const float upRight = -30.0;
+const float upRightOffset = 0.0;
+const float balanceAngle = 50;
 
 // TODO: Make calibration routine
 
@@ -119,24 +119,25 @@ void setup() {
 void loop() {
   updateValues();
   error = upRight-kalAngleY;
-  averageAngle = (19*averageAngle + kalAngleY)/20;
-  if (abs(error) <= upRightOffset)
+  Serial.print("Speed: "); Serial.print(speed); Serial.print("\n");
+  if ((error > balanceAngle || error < -balanceAngle) || (error < upRightOffset && error > -upRightOffset))
   {
     stop();
-  } else {
+  } else { 
     
     if(error > balanceAngle - upRightOffset && error > balanceAngle + upRightOffset ){
-      Serial.print("Motors stopped\n");
-      Serial.print("Balance angle:"); Serial.print(balanceAngle); Serial.print("\n");
+      //Serial.print("Balance angle:"); Serial.print(balanceAngle); Serial.print("\n");
       Serial.print("Error:"); Serial.print(error); Serial.print("\n");
       stop();      
        
     } else {
+      Serial.print(error > 0 ? "Tilting backwards\n": "Tilting forwards\n");
       Pid();
       Motors();
-      Serial.print("Motors running\n");
-      Serial.print("Balance angle:"); Serial.print(balanceAngle); Serial.print("\n");
-      Serial.print("Error:"); Serial.print(error); Serial.print("\n");
+      //Serial.print("Motors running\n");
+      //Serial.print("Balance angle:"); Serial.print(balanceAngle); Serial.print("\n");
+      Serial.print("Error: "); Serial.print(error); Serial.print("\n");
+      
       
     }
     
@@ -174,6 +175,7 @@ void stop()
   analogWrite(AIN2, 0);
   analogWrite(BIN1, 0);
   analogWrite(BIN2, 0);
+  Serial.print("Motors stopped\n");
 }
 
 void updateValues(){
@@ -248,7 +250,7 @@ void updateValues(){
 }
 
 void Pid(){
-  error =  upRight - kalAngleY;  // 180 = level
+  //error =  upRight - kalAngleY;  // 180 = level
   pTerm = Kp * error;
   integrated_error += error;
   iTerm = Ki * constrain(integrated_error, -GUARD_GAIN, GUARD_GAIN);
