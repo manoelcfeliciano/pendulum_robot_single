@@ -47,25 +47,29 @@ const int BIN2 = 10;  // (pwm) pin 11 connected to pin BIN2
 
 // PID
 const float Kp = 4; 
-const float Ki = 4;
+const float Ki = 1;
 const float Kd = 1;
 float pTerm, iTerm, dTerm, integrated_error, last_error, error;
 const float K = 1.9*1.12;
 #define   GUARD_GAIN   10.0
 
 //angles and offset
-const float upRight = -30.0;
+const float upRight = -70.0;
 const float upRightOffset = 0.0;
 const float balanceAngle = 50;
+float term;
 
 // TODO: Make calibration routine
 
 void setup() {
+    pinMode(13, OUTPUT);
   pinMode(AIN1, OUTPUT); // set pins to output
   pinMode(AIN2, OUTPUT);
   pinMode(BIN1, OUTPUT);
   pinMode(BIN2, OUTPUT);
-  Serial.begin(115200);
+  Serial.begin(9600);
+    Serial.print(("yo"));
+
   Wire.begin();
 #if ARDUINO >= 157
   Wire.setClock(400000UL); // Set I2C frequency to 400kHz
@@ -73,26 +77,35 @@ void setup() {
   TWBR = ((F_CPU / 400000UL) - 16) / 2; // Set I2C frequency to 400kHz
 #endif
 
+  Serial.print(("jahamennsan"));
+
   i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
   i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
   i2cData[2] = 0x00; // Set Gyro Full Scale Range to ±250deg/s
   i2cData[3] = 0x00; // Set Accelerometer Full Scale Range to ±2g
+  
   while (i2cWrite(0x19, i2cData, 4, false)); // Write to all four registers at once
+  Serial.print(("jahamennsan"));
   while (i2cWrite(0x6B, 0x01, true)); // PLL with X axis gyroscope reference and disable sleep mode
+
+  Serial.print(("neivel"));
 
   while (i2cRead(0x75, i2cData, 1));
   if (i2cData[0] != 0x68) { // Read "WHO_AM_I" register
     Serial.print(F("Error reading sensor"));
     while (1);
   }
-
+    
   delay(100); // Wait for sensor to stabilize
 
   /* Set kalman and gyro starting angle */
-  while (i2cRead(0x3B, i2cData, 6));
+  //while (i2cRead(0x3B, i2cData, 6));
+  Serial.print(F("ting"));
   accX = (i2cData[0] << 8) | i2cData[1];
   accY = (i2cData[2] << 8) | i2cData[3];
   accZ = (i2cData[4] << 8) | i2cData[5];
+
+  
 
   // Source: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf eq. 25 and eq. 26
   // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
@@ -113,12 +126,14 @@ void setup() {
   compAngleY = pitch;
 
   timer = micros();
+  Serial.print(F("ting"));
+
 
 }
 
 void loop() {
   updateValues();
-  error = upRight-kalAngleY;
+  error = upRight-kalAngleX;
   Serial.print("Speed: "); Serial.print(speed); Serial.print("\n");
   if ((error > balanceAngle || error < -balanceAngle) || (error < upRightOffset && error > -upRightOffset))
   {
@@ -250,12 +265,12 @@ void updateValues(){
 }
 
 void Pid(){
-  //error =  upRight - kalAngleY;  // 180 = level
-  pTerm = Kp * error;
-  integrated_error += error;
+  term =  error-3;  // 180 = level
+  pTerm = Kp * term;
+  integrated_error += term;
   iTerm = Ki * constrain(integrated_error, -GUARD_GAIN, GUARD_GAIN);
-  dTerm = Kd * (error - last_error);
-  last_error = error;
+  dTerm = Kd * (term - last_error);
+  last_error = term;
   speed = constrain(K*(pTerm + iTerm + dTerm), -255, 255);
 }
 
